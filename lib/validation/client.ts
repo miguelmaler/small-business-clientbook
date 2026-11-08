@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { blankToUndefined, trimmed, validate, type ValidationResult } from "./shared";
 
 /**
  * Validation for Client input, based on the Client class in the
@@ -25,13 +26,6 @@ export const CLIENT_LIMITS = {
 
 const MIN_PHONE_DIGITS = 7;
 const MAX_PHONE_DIGITS = 15;
-
-/** Forms send "" for empty inputs. Treat blank strings as "not provided". */
-const blankToUndefined = (value: unknown) =>
-  typeof value === "string" && value.trim() === "" ? undefined : value;
-
-const trimmed = (value: unknown) =>
-  typeof value === "string" ? value.trim() : value;
 
 const name = z
   .string({ error: "Name is required" })
@@ -92,33 +86,10 @@ export const clientUpdateSchema = clientCreateSchema
 export type ClientCreateInput = z.infer<typeof clientCreateSchema>;
 export type ClientUpdateInput = z.infer<typeof clientUpdateSchema>;
 
-/** Field name -> first error message, ready to show next to a form input. */
-export type FieldErrors = Partial<Record<keyof ClientCreateInput | "form", string>>;
-
-export type ValidationResult<T> =
-  | { success: true; data: T }
-  | { success: false; errors: FieldErrors };
-
-function toFieldErrors(error: z.ZodError): FieldErrors {
-  const errors: FieldErrors = {};
-  for (const issue of error.issues) {
-    const field = (issue.path[0] as keyof FieldErrors | undefined) ?? "form";
-    // Keep only the first message per field so the UI shows one clear error.
-    if (!errors[field]) errors[field] = issue.message;
-  }
-  return errors;
-}
-
 export function validateClientCreate(input: unknown): ValidationResult<ClientCreateInput> {
-  const result = clientCreateSchema.safeParse(input);
-  return result.success
-    ? { success: true, data: result.data }
-    : { success: false, errors: toFieldErrors(result.error) };
+  return validate(clientCreateSchema, input);
 }
 
 export function validateClientUpdate(input: unknown): ValidationResult<ClientUpdateInput> {
-  const result = clientUpdateSchema.safeParse(input);
-  return result.success
-    ? { success: true, data: result.data }
-    : { success: false, errors: toFieldErrors(result.error) };
+  return validate(clientUpdateSchema, input);
 }
