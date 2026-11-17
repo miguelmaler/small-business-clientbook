@@ -1,110 +1,174 @@
-<a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
-</a>
+# CraftDesk
 
-<p align="center">
- The fastest way to build apps with Next.js and Supabase
-</p>
+CraftDesk is a small-business client and job tracker for independent contractors and growing crews. It keeps client contact information and job progress in one place, including the amount charged, whether the job was billed, and whether it has been paid.
 
-<p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
-</p>
-<br/>
+This project is being built by a team of entry-level developers as a learning project using Next.js, Supabase, and Tailwind CSS.
 
-## Features
+## Current Status
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Proxy
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+The repository currently includes:
 
-## Demo
+- Next.js App Router setup
+- Supabase authentication with email and password
+- Protected routes and session handling
+- Tailwind CSS and shadcn/ui components
+- Supabase database schema for profiles, clients, and jobs
+- Row Level Security policies for user-owned data
+- Validation and money-formatting helpers
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+The client and job management screens are still under development.
 
-## Deploy to Vercel
+## Planned Features
 
-Vercel deployment will guide you through creating a Supabase account and project.
+- Create, view, edit, and delete clients
+- Store client name, email, phone number, address, and notes
+- Create and manage jobs for each client
+- Track pending and completed jobs
+- Record job amounts
+- Track billed and paid status
+- Keep each user's data private with Supabase Row Level Security
 
-After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
+## Technology
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
+- [Next.js](https://nextjs.org/) with the App Router
+- [React](https://react.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Supabase](https://supabase.com/) for authentication and PostgreSQL
+- [Tailwind CSS](https://tailwindcss.com/)
+- [shadcn/ui](https://ui.shadcn.com/) and Radix UI components
 
-The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
+## Prerequisites
 
-If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
+Install the following before working on the project:
 
-## Clone and run locally
+- Node.js and npm
+- A Supabase account and project
+- Git
 
-1. You'll first need a Supabase project which can be made [via the Supabase dashboard](https://database.new)
+Check that Node.js and npm are available:
 
-2. Create a Next.js app using the Supabase Starter template npx command
-
-   ```bash
-   npx create-next-app --example with-supabase with-supabase-app
-   ```
-
-   ```bash
-   yarn create next-app --example with-supabase with-supabase-app
-   ```
-
-   ```bash
-   pnpm create next-app --example with-supabase with-supabase-app
-   ```
-
-3. Use `cd` to change into the app's directory
-
-   ```bash
-   cd with-supabase-app
-   ```
-
-4. Rename `.env.example` to `.env.local` and update the following:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=[INSERT SUPABASE PROJECT URL]
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=[INSERT SUPABASE PROJECT API PUBLISHABLE OR ANON KEY]
+```bash
+node --version
+npm --version
 ```
 
-> [!NOTE]
-> This example uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, which refers to Supabase's new **publishable** key format.
-> Both legacy **anon** keys and new **publishable** keys can be used with this variable name during the transition period. Supabase's dashboard may show `NEXT_PUBLIC_SUPABASE_ANON_KEY`; its value can be used in this example.
-> See the [full announcement](https://github.com/orgs/supabase/discussions/29260) for more information.
+On macOS, Node.js can be installed with Homebrew:
 
-Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` can be found in [your Supabase project's API settings](https://supabase.com/dashboard/project/_?showConnect=true)
+```bash
+brew install node
+```
 
-5. You can now run the Next.js local development server:
+## Local Setup
 
-   ```bash
-   npm run dev
-   ```
+Clone the repository and enter the project directory:
 
-   The starter kit should now be running on [localhost:3000](http://localhost:3000/).
+```bash
+git clone git@github.com:miguelmaler/small-business-clientbook.git
+cd small-business-clientbook
+```
 
-6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
+Install the dependencies:
 
-> Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
+```bash
+npm install
+```
 
-## Feedback and issues
+Create a file named `.env.local` in the project root:
 
-Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).
+```env
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
+```
 
-## More Supabase examples
+Both values are available in the Supabase dashboard under **Project Settings > API**. A legacy Supabase `anon` key can also be used as the value for `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 
-- [Next.js Subscription Payments Starter](https://github.com/vercel/nextjs-subscription-payments)
-- [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
-- [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
+Do not commit `.env.local` or any service-role key. The service-role key bypasses Row Level Security and must never be exposed in browser code.
+
+## Database Setup
+
+The database definition is in [`schema.sql`](schema.sql). It creates:
+
+- `profiles` for application-specific user information
+- `clients` for client contact information
+- `jobs` for work and billing records
+- Ownership constraints and indexes
+- A profile trigger for new signups
+- `updated_at` timestamp triggers
+- Row Level Security policies
+- Data API privileges for authenticated users
+
+To apply it to a new Supabase project:
+
+1. Open the project in the Supabase dashboard.
+2. Select **SQL Editor**.
+3. Create a new query.
+4. Paste the contents of `schema.sql`.
+5. Click **Run**.
+
+The script is intended to run once on a fresh project. Do not run it again unchanged after the tables, policies, or triggers already exist.
+
+After applying the schema, create a test account through the application and confirm that a matching profile is created.
+
+## Running the Application
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in a browser.
+
+The existing authentication flow supports signing up, confirming an email, signing in, signing out, and resetting a password. Supabase Auth URL configuration should include the local callback URL:
+
+```text
+http://localhost:3000/auth/confirm
+```
+
+## Verification Commands
+
+Run the linter:
+
+```bash
+npm run lint
+```
+
+Create a production build:
+
+```bash
+npm run build
+```
+
+Before opening a pull request, verify that authentication still works and that users cannot access another user's clients or jobs.
+
+## Git Workflow
+
+Update your local view of the remote repository:
+
+```bash
+git fetch origin
+```
+
+Create a feature branch before making changes:
+
+```bash
+git switch -c feature/short-description
+```
+
+After testing your changes:
+
+```bash
+git add .
+git commit -m "Describe the change"
+git push -u origin feature/short-description
+```
+
+Use consistent lowercase branch names. Branch names that differ only by capitalization, such as `Backend` and `backend`, can cause problems on case-insensitive macOS filesystems.
+
+## Project Conventions
+
+- Keep database ownership enforced by `user_id` and Row Level Security.
+- Let the database set IDs and timestamps.
+- Validate user input before sending it to Supabase.
+- Keep service-role credentials out of the browser and repository.
+- Keep pull requests small enough for another team member to review.
