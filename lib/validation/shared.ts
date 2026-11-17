@@ -7,6 +7,17 @@ export const blankToUndefined = (value: unknown) =>
 export const trimmed = (value: unknown) =>
   typeof value === "string" ? value.trim() : value;
 
+/**
+ * For nullable database columns: trim strings and turn blank strings (or null)
+ * into null, so clearing a form field clears the column. `undefined` (field
+ * not sent) stays undefined so updates leave the column alone.
+ */
+export const blankToNull = (value: unknown) => {
+  if (value === null) return null;
+  const clean = trimmed(value);
+  return clean === "" ? null : clean;
+};
+
 /** Field name -> first error message, ready to show next to a form input. */
 export type FieldErrors<Field extends string> = Partial<Record<Field | "form", string>>;
 

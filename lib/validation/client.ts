@@ -1,27 +1,31 @@
 import { z } from "zod";
-import { blankToUndefined, trimmed, validate, type ValidationResult } from "./shared";
+import { blankToNull, validate, type ValidationResult } from "./shared";
 
 /**
- * Validation for Client input, based on the Client class in the
- * Small Business CRM class diagram:
+ * Validation for Client input, matching the `public.clients` table:
  *
- *   name: text            (required)
- *   email: text [0..1]    (optional)
- *   phone: text           (required)
- *   address: text         (required)
- *   notes: text [0..1]    (optional)
+ *   name     text not null   (not blank, <= 200 chars)
+ *   email    text            (optional, <= 254 chars)
+ *   phone    text not null   (not blank, <= 40 chars)
+ *   address  text not null   (not blank, <= 500 chars)
+ *   notes    text            (optional, <= 5000 chars)
  *
- * `id` and `user_id` are intentionally NOT part of the input. The server sets
- * them (user_id comes from the logged-in user), so a user can never create a
- * client under someone else's account.
+ * `id`, `user_id`, `created_at`, and `updated_at` are intentionally NOT part of
+ * the input. The database sets them (user_id defaults to auth.uid() and RLS
+ * rejects any other value), so a user can never create a client under someone
+ * else's account.
+ *
+ * Optional fields come out as `null` when left blank, so an update can clear
+ * them (sending `undefined` would leave the old value in place).
  */
 
+/** Must match the CHECK constraints on public.clients. */
 export const CLIENT_LIMITS = {
-  name: 100,
+  name: 200,
   email: 254,
-  phone: 30,
-  address: 200,
-  notes: 2000,
+  phone: 40,
+  address: 500,
+  notes: 5000,
 } as const;
 
 const MIN_PHONE_DIGITS = 7;
@@ -34,11 +38,12 @@ const name = z
   .max(CLIENT_LIMITS.name, `Name must be ${CLIENT_LIMITS.name} characters or less`);
 
 const email = z.preprocess(
-  (value) => trimmed(blankToUndefined(value)),
+  blankToNull,
   z
     .email("Enter a valid email address")
     .max(CLIENT_LIMITS.email, `Email must be ${CLIENT_LIMITS.email} characters or less`)
     .transform((value) => value.toLowerCase())
+    .nullable()
     .optional(),
 );
 
@@ -60,10 +65,11 @@ const address = z
   .max(CLIENT_LIMITS.address, `Address must be ${CLIENT_LIMITS.address} characters or less`);
 
 const notes = z.preprocess(
-  (value) => trimmed(blankToUndefined(value)),
+  blankToNull,
   z
     .string()
     .max(CLIENT_LIMITS.notes, `Notes must be ${CLIENT_LIMITS.notes} characters or less`)
+    .nullable()
     .optional(),
 );
 
