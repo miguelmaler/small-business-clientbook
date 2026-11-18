@@ -1,53 +1,182 @@
-import React from 'react';
-import { MOCK_JOBS, MOCK_CLIENTS } from '@/lib/mockData';
-import Link from 'next/link';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://olzneubnisarpxopkvzi.supabase.co';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_1IQJsysxYODjVkFB75ApbQ_n_Zmh6m3';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+interface Job {
+  id: string;
+  user_id: string;
+  client_id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  amount: number;
+  billed: boolean;
+  paid: boolean;
+  created_at: string;
+}
+
+interface ClientOption {
+  id: string;
+  name: string;
+}
 
 export default function DashboardPage() {
-  const pendingJobs = MOCK_JOBS.filter(j => j.status === 'pending');
-  const totalRevenue = MOCK_JOBS.reduce((acc, j) => acc + (j.paid ? j.amount : 0), 0);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [clients, setClients] = useState<ClientOption[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState('');
+  const [clientId, setClientId] = useState('');
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+    const [jobsRes, clientsRes] = await Promise.all([
+      supabase.from('jobs').select('*').order('created_at', { ascending: false }),
+      supabase.from('clients').select('id, name'),
+    ]);
+
+    if (jobsRes.data) setJobs(jobsRes.data);
+    if (clientsRes.data) setClients(clientsRes.data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const handleCreateJob = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const { error } = await supabase.from('jobs').insert([
+      {
+        user_id: user ? user.id : '00000000-0000-0000-0000-000000000000',
+        client_id: clientId,
+        title,
+        description,
+        status: 'pending',
+        amount: parseFloat(amount) || 0,
+        billed: false,
+        paid: false,
+      },
+    ]);
+
+    if (error) {
+      alert('Error creating job: ' + error.message);
+    } else {
+      setTitle('');
+      setDescription('');
+      setAmount('');
+      loadDashboardData();
+    }
+  };
+
+  const toggleJobPaid = async (job: Job) => {
+    const { error } = await supabase
+      .from('jobs')
+      .update({ paid: !job.paid, status: !job.paid ? 'done' : 'pending' })
+      .eq('id', job.id);
+
+    if (!error) loadDashboardData();
+  };
+
+  const pendingJobs = jobs.filter((j) => j.status === 'pending').length;
+  const totalRevenue = jobs
+    .filter((j) => j.paid)
+    .reduce((sum, j) => sum + Number(j.amount || 0), 0);
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <Link href="/contacts" className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium">
-          View Contacts →
-        </Link>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-6 border rounded-lg shadow-sm bg-card">
-          <h3 className="text-sm font-medium text-muted-foreground">Total Clients</h3>
-          <p className="text-3xl font-bold mt-2">{MOCK_CLIENTS.length}</p>
+    <div style={{ padding: '30px', maxWidth: '900px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+      <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>Business Dashboard</h1>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginBottom: '30px' }}>
+        <div style={{ border: '1px solid #ccc', padding: '15px', borderRadius: '8px' }}>
+          <p style={{ fontSize: '14px', color: '#666' }}>Total Clients</p>
+          <p style={{ fontSize: '24px', fontWeight: 'bold' }}>{clients.length}</p>
         </div>
-        <div className="p-6 border rounded-lg shadow-sm bg-card">
-          <h3 className="text-sm font-medium text-muted-foreground">Pending Jobs</h3>
-          <p className="text-3xl font-bold mt-2">{pendingJobs.length}</p>
+        <div style={{ border: '1px solid #ccc', padding: '15px', borderRadius: '8px' }}>
+          <p style={{ fontSize: '14px', color: '#666' }}>Pending Jobs</p>
+          <p style={{ fontSize: '24px', fontWeight: 'bold' }}>{pendingJobs}</p>
         </div>
-        <div className="p-6 border rounded-lg shadow-sm bg-card">
-          <h3 className="text-sm font-medium text-muted-foreground">Collected Revenue</h3>
-          <p className="text-3xl font-bold mt-2">${totalRevenue.toFixed(2)}</p>
+        <div style={{ border: '1px solid #ccc', padding: '15px', borderRadius: '8px' }}>
+          <p style={{ fontSize: '14px', color: '#666' }}>Total Revenue (Paid)</p>
+          <p style={{ fontSize: '24px', fontWeight: 'bold' }}>${totalRevenue.toFixed(2)}</p>
         </div>
       </div>
 
-      <h2 className="text-xl font-semibold mt-6">Recent Jobs</h2>
-      <div className="border rounded-lg divide-y bg-card">
-        {MOCK_JOBS.map(job => (
-          <div key={job.id} className="p-4 flex justify-between items-center">
-            <div>
-              <p className="font-semibold">{job.jobTitle}</p>
-              <p className="text-sm text-muted-foreground">{job.description}</p>
-              <p className="text-xs text-muted-foreground mt-1">{job.timestamp}</p>
+      <form onSubmit={handleCreateJob} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', border: '1px solid #ccc', padding: '20px', borderRadius: '8px', marginBottom: '30px' }}>
+        <select
+          required
+          value={clientId}
+          onChange={(e) => setClientId(e.target.value)}
+          style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+        >
+          <option value="">Select a Client *</option>
+          {clients.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+        <input
+          type="text"
+          placeholder="Job Title *"
+          required
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+        />
+        <input
+          type="number"
+          step="0.01"
+          placeholder="Amount ($)"
+          required
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+        />
+        <input
+          type="text"
+          placeholder="Description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+        />
+        <button type="submit" style={{ gridColumn: 'span 2', padding: '10px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+          Create Job
+        </button>
+      </form>
+
+      {loading ? (
+        <p>Loading jobs...</p>
+      ) : jobs.length === 0 ? (
+        <p style={{ color: '#666' }}>No jobs recorded yet.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          {jobs.map((job) => (
+            <div key={job.id} style={{ border: '1px solid #eee', padding: '15px', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+              <div>
+                <h2 style={{ fontSize: '18px', fontWeight: '600' }}>{job.title}</h2>
+                <p style={{ fontSize: '14px', color: '#555' }}>{job.description}</p>
+                <p style={{ fontSize: '14px', marginTop: '5px' }}>
+                  Amount: <strong>${Number(job.amount).toFixed(2)}</strong> • Status: <span style={{ textTransform: 'uppercase' }}>{job.status}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => toggleJobPaid(job)}
+                style={{ padding: '8px 12px', borderRadius: '4px', fontSize: '14px', color: '#fff', backgroundColor: job.paid ? '#6c757d' : '#0070f3', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                {job.paid ? 'Paid ✓' : 'Mark as Paid'}
+              </button>
             </div>
-            <div className="text-right">
-              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${job.status === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                {job.status.toUpperCase()}
-              </span>
-              <p className="text-sm font-bold mt-1">${job.amount.toFixed(2)}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
