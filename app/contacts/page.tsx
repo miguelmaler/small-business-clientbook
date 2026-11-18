@@ -1,11 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/client';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://olzneubnisarpxopkvzi.supabase.co';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_1IQJsysxYODjVkFB75ApbQ_n_Zmh6m3';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient();
 
 interface Client {
   id: string;
