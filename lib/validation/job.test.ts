@@ -8,40 +8,72 @@ const validJob = {
   client_id: CLIENT_ID,
   title: "Kitchen sink repair",
   description: "Replace leaking faucet and supply lines",
-  amount_cents: 15000,
-  billing_status: "BILLED",
+  amount: 150,
+  billed: true,
+  paid: false,
 };
 
 describe("validateJobCreate", () => {
-  it("accepts a valid job and defaults status to PENDING", () => {
+  it("accepts a valid job and defaults status to pending", () => {
     expect(validateJobCreate(validJob)).toEqual({
       success: true,
-      data: { ...validJob, status: "PENDING" },
+      data: { ...validJob, status: "pending" },
     });
   });
 
-  it("accepts explicit statuses", () => {
-    const result = validateJobCreate({ ...validJob, status: "DONE", billing_status: "PAID" });
-    expect(result.success && result.data.status).toBe("DONE");
-    expect(result.success && result.data.billing_status).toBe("PAID");
+  it("applies the database defaults when only client_id and title are sent", () => {
+    expect(validateJobCreate({ client_id: CLIENT_ID, title: "Fix sink" })).toEqual({
+      success: true,
+      data: {
+        client_id: CLIENT_ID,
+        title: "Fix sink",
+        description: "",
+        status: "pending",
+        amount: 0,
+        billed: false,
+        paid: false,
+      },
+    });
   });
 
-  it("allows a PENDING job to be BILLED or PAID (deposits)", () => {
-    expect(validateJobCreate({ ...validJob, status: "PENDING", billing_status: "PAID" }).success)
-      .toBe(true);
+  it("accepts explicit status and billing", () => {
+    const result = validateJobCreate({ ...validJob, status: "done", billed: true, paid: true });
+    expect(result.success && result.data.status).toBe("done");
+    expect(result.success && result.data.paid).toBe(true);
+  });
+
+  it("allows a pending job to be billed and paid (deposits)", () => {
+    expect(
+      validateJobCreate({ ...validJob, status: "pending", billed: true, paid: true }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a job that is paid but not billed", () => {
+    const result = validateJobCreate({ ...validJob, billed: false, paid: true });
+    expect(!result.success && result.errors.paid).toBe(
+      "A job must be billed before it can be marked paid",
+    );
+  });
+
+  it("rejects paid when billed is left to its default", () => {
+    const result = validateJobCreate({ client_id: CLIENT_ID, title: "Fix sink", paid: true });
+    expect(!result.success && result.errors.paid).toBeDefined();
   });
 
   it("trims title and description", () => {
-    const result = validateJobCreate({ ...validJob, title: "  Fix sink  " });
+    const result = validateJobCreate({ ...validJob, title: "  Fix sink  ", description: " x " });
     expect(result.success && result.data.title).toBe("Fix sink");
+    expect(result.success && result.data.description).toBe("x");
+  });
+
+  it("allows an empty description", () => {
+    const result = validateJobCreate({ ...validJob, description: "   " });
+    expect(result.success && result.data.description).toBe("");
   });
 
   it.each([
     ["client_id", "Client is required"],
     ["title", "Title is required"],
-    ["description", "Description is required"],
-    ["amount_cents", "Amount is required"],
-    ["billing_status", "Billing status is required"],
   ] as const)("requires %s", (field, message) => {
     const result = validateJobCreate({ ...validJob, [field]: undefined });
     expect(!result.success && result.errors[field]).toBe(message);
@@ -57,38 +89,53 @@ describe("validateJobCreate", () => {
     expect(!result.success && result.errors.title).toBe("Title is required");
   });
 
-  it.each(["pending", "IN_PROGRESS", ""])("rejects status %j", (value) => {
+  it.each(["PENDING", "DONE", "in_progress", ""])("rejects status %j", (value) => {
     const result = validateJobCreate({ ...validJob, status: value });
-    expect(!result.success && result.errors.status).toBe("Status must be PENDING or DONE");
+    expect(!result.success && result.errors.status).toBe("Status must be pending or done");
   });
 
-  it.each(["UNBILLED", "INVOICED", "paid"])("rejects billing status %j", (value) => {
-    const result = validateJobCreate({ ...validJob, billing_status: value });
-    expect(!result.success && result.errors.billing_status).toBe(
-      "Billing status must be BILLED or PAID",
-    );
+  it.each([
+    ["billed", "yes"],
+    ["paid", "true"],
+    ["billed", 1],
+  ] as const)("rejects non-boolean %s %j", (field, value) => {
+    const result = validateJobCreate({ ...validJob, [field]: value });
+    expect(!result.success && result.errors[field]).toMatch(/must be true or false/);
   });
 
-  describe("amount_cents", () => {
+  describe("amount", () => {
     it("accepts zero (free work)", () => {
-      expect(validateJobCreate({ ...validJob, amount_cents: 0 }).success).toBe(true);
+      expect(validateJobCreate({ ...validJob, amount: 0 }).success).toBe(true);
     });
 
     it("accepts the maximum", () => {
-      expect(validateJobCreate({ ...validJob, amount_cents: MAX_AMOUNT_CENTS }).success).toBe(
-        true,
-      );
+      const result = validateJobCreate({ ...validJob, amount: MAX_AMOUNT_CENTS / 100 });
+      expect(result.success && result.data.amount).toBe(10_000_000);
+    });
+
+    it.each([
+      [19.99, 19.99],
+      ["19.99", 19.99],
+      ["$1,234.5", 1234.5],
+      [".99", 0.99],
+      [0.1 + 0.2, 0.3],
+    ])("converts %j to %j dollars", (value, expected) => {
+      const result = validateJobCreate({ ...validJob, amount: value });
+      expect(result.success && result.data.amount).toBe(expected);
     });
 
     it.each([
       [-1, "Amount cannot be negative"],
-      [12.5, "Amount must be a whole number of cents"],
-      [MAX_AMOUNT_CENTS + 1, "Amount cannot be more than $10,000,000.00"],
-      ["1500", "Amount must be a number in cents"],
-      [Number.NaN, "Amount must be a number in cents"],
+      ["-5", "Amount cannot be negative"],
+      [12.345, "Amount must be a dollar amount with at most 2 decimal places"],
+      ["abc", "Amount must be a dollar amount with at most 2 decimal places"],
+      // Zod rejects NaN as "not a number", before the amount is parsed.
+      [Number.NaN, "Amount must be a dollar amount"],
+      [MAX_AMOUNT_CENTS / 100 + 0.01, "Amount cannot be more than $10,000,000.00"],
+      [true, "Amount must be a dollar amount"],
     ])("rejects %j", (value, message) => {
-      const result = validateJobCreate({ ...validJob, amount_cents: value });
-      expect(!result.success && result.errors.amount_cents).toBe(message);
+      const result = validateJobCreate({ ...validJob, amount: value });
+      expect(!result.success && result.errors.amount).toBe(message);
     });
   });
 
@@ -102,8 +149,8 @@ describe("validateJobCreate", () => {
     expect(!result.success && result.errors.description).toMatch(/or less/);
   });
 
-  it.each(["id", "user_id", "created_at", "updated_at"])(
-    "rejects server-set field %s",
+  it.each(["id", "user_id", "created_at", "updated_at", "amount_cents", "billing_status"])(
+    "rejects unknown or server-set field %s",
     (field) => {
       expect(validateJobCreate({ ...validJob, [field]: "x" }).success).toBe(false);
     },
@@ -112,14 +159,21 @@ describe("validateJobCreate", () => {
 
 describe("validateJobUpdate", () => {
   it("accepts marking a job done", () => {
-    expect(validateJobUpdate({ status: "DONE" })).toEqual({
+    expect(validateJobUpdate({ status: "done" })).toEqual({
       success: true,
-      data: { status: "DONE" },
+      data: { status: "done" },
     });
   });
 
   it("accepts marking a job paid", () => {
-    expect(validateJobUpdate({ billing_status: "PAID" }).success).toBe(true);
+    expect(validateJobUpdate({ paid: true }).success).toBe(true);
+  });
+
+  it("rejects marking a job paid and unbilled in the same update", () => {
+    const result = validateJobUpdate({ billed: false, paid: true });
+    expect(!result.success && result.errors.paid).toBe(
+      "A job must be billed before it can be marked paid",
+    );
   });
 
   it("does not apply defaults on update", () => {
@@ -133,7 +187,7 @@ describe("validateJobUpdate", () => {
   });
 
   it("still validates the fields that are sent", () => {
-    const result = validateJobUpdate({ amount_cents: -5 });
-    expect(!result.success && result.errors.amount_cents).toBe("Amount cannot be negative");
+    const result = validateJobUpdate({ amount: -5 });
+    expect(!result.success && result.errors.amount).toBe("Amount cannot be negative");
   });
 });

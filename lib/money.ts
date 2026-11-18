@@ -1,7 +1,8 @@
 /**
- * Money helpers. Job amounts are stored as whole cents (`amount_cents: integer`)
- * because decimals like 0.1 + 0.2 can't be represented exactly in JavaScript
- * (0.1 + 0.2 === 0.30000000000000004). Integers have no rounding errors.
+ * Money helpers. The database stores job amounts in dollars as
+ * `numeric(12, 2)`, which is exact. JavaScript numbers are not
+ * (0.1 + 0.2 === 0.30000000000000004), so do any math in whole cents, where
+ * integers have no rounding errors, and convert back to dollars at the edges.
  */
 
 /** $10,000,000.00 — a sanity cap so typos like an extra few zeros are caught. */

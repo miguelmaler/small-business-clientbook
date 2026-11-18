@@ -24,7 +24,7 @@ describe("validateClientCreate", () => {
     expect(result.success).toBe(true);
   });
 
-  it("treats blank optional fields from a form as not provided", () => {
+  it("stores blank optional fields from a form as null", () => {
     const result = validateClientCreate({ ...validClient, email: "  ", notes: "" });
     expect(result).toEqual({
       success: true,
@@ -32,8 +32,8 @@ describe("validateClientCreate", () => {
         name: "Jane Doe",
         phone: "(208) 555-0123",
         address: "123 Main St, Boise, ID",
-        email: undefined,
-        notes: undefined,
+        email: null,
+        notes: null,
       },
     });
   });
@@ -81,13 +81,37 @@ describe("validateClientCreate", () => {
     expect(!result.success && result.errors.phone).toBeDefined();
   });
 
+  it("matches the database length limits", () => {
+    expect(CLIENT_LIMITS).toEqual({
+      name: 200,
+      email: 254,
+      phone: 40,
+      address: 500,
+      notes: 5000,
+    });
+  });
+
+  it("accepts values right at the max lengths", () => {
+    const result = validateClientCreate({
+      ...validClient,
+      name: "a".repeat(CLIENT_LIMITS.name),
+      address: "a".repeat(CLIENT_LIMITS.address),
+      notes: "a".repeat(CLIENT_LIMITS.notes),
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("enforces max lengths", () => {
     const result = validateClientCreate({
       ...validClient,
       name: "a".repeat(CLIENT_LIMITS.name + 1),
+      phone: "1-".repeat(21),
+      address: "a".repeat(CLIENT_LIMITS.address + 1),
       notes: "a".repeat(CLIENT_LIMITS.notes + 1),
     });
     expect(!result.success && result.errors.name).toMatch(/or less/);
+    expect(!result.success && result.errors.phone).toMatch(/or less/);
+    expect(!result.success && result.errors.address).toMatch(/or less/);
     expect(!result.success && result.errors.notes).toMatch(/or less/);
   });
 
@@ -128,6 +152,13 @@ describe("validateClientUpdate", () => {
   it("still validates the fields that are sent", () => {
     const result = validateClientUpdate({ email: "bad" });
     expect(!result.success && result.errors.email).toBe("Enter a valid email address");
+  });
+
+  it.each(["", "   ", null])("clears an optional field when sent %j", (value) => {
+    expect(validateClientUpdate({ email: value, notes: value })).toEqual({
+      success: true,
+      data: { email: null, notes: null },
+    });
   });
 
   it("does not allow clearing a required field", () => {
